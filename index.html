@@ -171,120 +171,130 @@
         // ==================================================
         // 點擊與滑動選取 統一處理系統 (門檻判定)
         // ==================================================
-        function setupDragAndClickEvents(grid) {
-            let isPressing = false;
-            let dragMode = null;      // "add" 或 "remove"
-            let startX = 0;
-            let startY = 0;
-            let startCellDate = null;
-            let isDragged = false;
-            const MOVE_THRESHOLD = 8; // 8px 位移門檻：<=8px 判定為按一下；>8px 為滑動
+function setupDragAndClickEvents(grid) {
+    let isPressing = false;
+    let dragMode = null;      
+    let startX = 0;
+    let startY = 0;
+    let startCellDate = null;
+    let isDragged = false;
+    const MOVE_THRESHOLD = 15; // ★ 加大到 15px，提高點擊判定成功率
 
-            function getCellFromPoint(x, y) {
-                const element = document.elementFromPoint(x, y);
-                return element ? element.closest("#calendar-grid div[data-date]") : null;
+    function getCellFromPoint(x, y) {
+        const element = document.elementFromPoint(x, y);
+        return element ? element.closest("#calendar-grid div[data-date]") : null;
+    }
+
+    function processDate(dateStr, mode) {
+        if (!dateStr || isDateDisabledByOthers(dateStr)) return;
+
+        if (mode === "add") {
+            selectedDates.add(dateStr);
+        } else if (mode === "remove") {
+            selectedDates.delete(dateStr);
+        }
+        updateCalendarUI();
+    }
+
+    function handleStart(clientX, clientY, target) {
+        const cell = target.closest("#calendar-grid div[data-date]");
+        if (!cell) return;
+
+        const dateStr = cell.dataset.date;
+        if (isDateDisabledByOthers(dateStr)) return;
+
+        isPressing = true;
+        isDragged = false;
+        startX = clientX;
+        startY = clientY;
+        startCellDate = dateStr;
+
+        dragMode = selectedDates.has(dateStr) ? "remove" : "add";
+    }
+
+    function handleMove(clientX, clientY) {
+        if (!isPressing) return;
+
+        const dx = Math.abs(clientX - startX);
+        const dy = Math.abs(clientY - startY);
+
+        // 超過門檻才進入滑動選取
+        if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
+            if (!isDragged) {
+                isDragged = true;
+                processDate(startCellDate, dragMode);
             }
 
-            function processDate(dateStr, mode) {
-                if (!dateStr || isDateDisabledByOthers(dateStr)) return;
-
-                if (mode === "add") {
-                    selectedDates.add(dateStr);
-                } else if (mode === "remove") {
-                    selectedDates.delete(dateStr);
-                }
-                updateCalendarUI();
+            const cell = getCellFromPoint(clientX, clientY);
+            if (cell) {
+                processDate(cell.dataset.date, dragMode);
             }
+        }
+    }
 
-            function handleStart(clientX, clientY, target) {
-                const cell = target.closest("#calendar-grid div[data-date]");
-                if (!cell) return;
+    function handleEnd(clientX, clientY) {
+        if (!isPressing) return;
 
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
+        const dx = Math.abs(clientX - startX);
+        const dy = Math.abs(clientY - startY);
 
-                isPressing = true;
-                isDragged = false;
-                startX = clientX;
-                startY = clientY;
-                startCellDate = dateStr;
-
-                // 決定滑動時的模式
-                dragMode = selectedDates.has(dateStr) ? "remove" : "add";
+        // ★ 位移在門檻內，且沒進入滑動狀態 -> 100% 觸發點擊變色
+        if (!isDragged && dx <= MOVE_THRESHOLD && dy <= MOVE_THRESHOLD && startCellDate) {
+            if (selectedDates.has(startCellDate)) {
+                selectedDates.delete(startCellDate);
+            } else {
+                selectedDates.add(startCellDate);
             }
-
-            function handleMove(clientX, clientY) {
-                if (!isPressing) return;
-
-                const dx = Math.abs(clientX - startX);
-                const dy = Math.abs(clientY - startY);
-
-                // 超過 8px，進入滑動選取模式
-                if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
-                    if (!isDragged) {
-                        isDragged = true;
-                        // 第一次進入滑動，順帶將起點也套用模式
-                        processDate(startCellDate, dragMode);
-                    }
-
-                    const cell = getCellFromPoint(clientX, clientY);
-                    if (cell) {
-                        processDate(cell.dataset.date, dragMode);
-                    }
-                }
-            }
-
-            function handleEnd(clientX, clientY) {
-                if (!isPressing) return;
-
-                // 未觸發滑動，且位移在門檻內 -> 判定為「點擊按一下」
-                if (!isDragged && startCellDate) {
-                    if (selectedDates.has(startCellDate)) {
-                        selectedDates.delete(startCellDate);
-                    } else {
-                        selectedDates.add(startCellDate);
-                    }
-                    updateCalendarUI();
-                }
-
-                // 重置狀態
-                isPressing = false;
-                isDragged = false;
-                dragMode = null;
-                startCellDate = null;
-            }
-
-            // --- 觸控事件 (Mobile) ---
-            grid.addEventListener("touchstart", (e) => {
-                handleStart(e.touches[0].clientX, e.touches[0].clientY, e.target);
-            }, { passive: true });
-
-            grid.addEventListener("touchmove", (e) => {
-                handleMove(e.touches[0].clientX, e.touches[0].clientY);
-            }, { passive: true });
-
-            grid.addEventListener("touchend", (e) => {
-                const touch = e.changedTouches[0];
-                handleEnd(touch.clientX, touch.clientY);
-            });
-
-            // --- 滑鼠事件 (Desktop) ---
-            grid.addEventListener("mousedown", (e) => {
-                if (e.button !== 0) return;
-                handleStart(e.clientX, e.clientY, e.target);
-            });
-
-            grid.addEventListener("mousemove", (e) => {
-                handleMove(e.clientX, e.clientY);
-            });
-
-            document.addEventListener("mouseup", (e) => {
-                if (isPressing) {
-                    handleEnd(e.clientX, e.clientY);
-                }
-            });
+            updateCalendarUI();
         }
 
+        // 重置狀態
+        isPressing = false;
+        isDragged = false;
+        dragMode = null;
+        startCellDate = null;
+    }
+
+    // --- 觸控事件 (Mobile) ---
+    grid.addEventListener("touchstart", (e) => {
+        if (e.touches.length > 1) return; // 忽略多指觸控
+        const touch = e.touches[0];
+        handleStart(touch.clientX, touch.clientY, e.target);
+    }, { passive: true });
+
+    grid.addEventListener("touchmove", (e) => {
+        if (!isPressing) return;
+        const touch = e.touches[0];
+        handleMove(touch.clientX, touch.clientY);
+        
+        // 如果已經在滑動選取了，防止瀏覽器頁面跟著上下滾動
+        if (isDragged && e.cancelable) {
+            e.preventDefault();
+        }
+    }, { passive: false }); // ★ 設為 false 才能在需要時 preventDefault
+
+    grid.addEventListener("touchend", (e) => {
+        if (!isPressing) return;
+        const touch = e.changedTouches[0]; // ★ 從 changedTouches 拿放開時的座標
+        handleEnd(touch.clientX, touch.clientY);
+    });
+
+    // --- 滑鼠事件 (Desktop) ---
+    grid.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        handleStart(e.clientX, e.clientY, e.target);
+    });
+
+    grid.addEventListener("mousemove", (e) => {
+        handleMove(e.clientX, e.clientY);
+    });
+
+    document.addEventListener("mouseup", (e) => {
+        if (isPressing) {
+            handleEnd(e.clientX, e.clientY);
+        }
+    });
+}
         async function enterApp() {
             const select = document.getElementById("user-select");
             if (!select.value) {
