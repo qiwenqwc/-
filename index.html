@@ -2,32 +2,40 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>每月份日期避開系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .selected-date { background-color: #ef4444 !important; color: white !important; }
         .disabled-by-others { background-color: #d1d5db !important; color: #9ca3af !important; text-decoration: line-through; cursor: not-allowed; }
-        /* 防止手機滑動選取時觸發頁面上下滾動 */
-        #calendar-grid { touch-action: none; }
+        
+        /* 核心優化：禁用手機長按選取文字、選取放大鏡與快顯功能 */
+        #calendar-grid { 
+            touch-action: none; 
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none; /* 禁用 iOS 長按選單 */
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans antialiased">
+<body class="bg-gray-50 text-gray-800 font-sans antialiased select-none">
 
     <div class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
         <header class="bg-blue-600 text-white p-4 text-center">
             <h1 id="month-title" class="text-xl font-bold">載入中...</h1>
-            <p class="text-xs mt-1 text-blue-100">點擊或按著滑動選擇你「不可以」的日子</p>
+            <p class="text-xs mt-1 text-blue-100">點擊或滑過選擇你「不可以」的日子</p>
         </header>
 
         <section id="login-section" class="p-6 flex-1 flex flex-col justify-center">
             <h2 class="text-lg font-semibold mb-4 text-center">請選擇你的暱稱</h2>
             <select id="user-select" class="w-full p-3 border rounded-lg mb-4 text-lg bg-white shadow-sm">
                 <option value="">-- 請選擇身分 --</option>
-                <option value="成員1">成員 1</option>
-                <option value="成員2">成員 2</option>
-                <option value="成員3">成員 3</option>
-                <option value="成員4">成員 4</option>
+                <option value="成員1">Q</option>
+                <option value="成員2">H</option>
+                <option value="成員3">S</option>
+                <option value="成員4">C</option>
             </select>
             <button id="enter-btn" onclick="enterApp()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow hover:bg-blue-700 transition flex items-center justify-center">
                 進入填寫
@@ -95,7 +103,7 @@
             for (let day = 1; day <= totalDays; day++) {
                 const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const cell = document.createElement('div');
-                cell.className = 'bg-white py-4 flex items-center justify-center cursor-pointer select-none transition user-select-none';
+                cell.className = 'bg-white py-4 flex items-center justify-center cursor-pointer select-none transition';
                 cell.innerText = day;
                 cell.dataset.date = dateStr;
                 grid.appendChild(cell);
@@ -122,6 +130,7 @@
                 isMouseDown = false;
             };
 
+            // 電腦滑鼠事件
             grid.addEventListener('mousedown', (e) => {
                 const cell = e.target.closest('[data-date]');
                 handleStart(cell);
@@ -134,6 +143,7 @@
 
             window.addEventListener('mouseup', handleEnd);
 
+            // 手機觸控事件：移除 passive 限制並阻止預設選取行為
             grid.addEventListener('touchstart', (e) => {
                 const touch = e.touches[0];
                 const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-date]');
@@ -193,7 +203,6 @@
             document.getElementById('login-section').classList.remove('hidden');
         }
 
-        // 核心修復 1：增加 redirect: 'follow' 相容手機 Safari/Chrome 重定向
         async function fetchLatestData() {
             try {
                 const response = await fetch(WEB_APP_URL, {
@@ -203,7 +212,6 @@
                 const result = await response.json();
                 allUsersData = result || {};
                 
-                // 核心修復 2：載入資料後，立刻計算並渲染「目前使用者」與「其他所有成員」的狀態
                 loadUserDataToLocal();
                 updateCalendarUI();
             } catch (error) {
@@ -230,7 +238,7 @@
             const cells = document.querySelectorAll('#calendar-grid div[data-date]');
             cells.forEach(cell => {
                 const dateStr = cell.dataset.date;
-                cell.className = 'bg-white py-4 flex items-center justify-center cursor-pointer select-none transition user-select-none';
+                cell.className = 'bg-white py-4 flex items-center justify-center cursor-pointer select-none transition';
 
                 if (selectedDates.has(dateStr)) {
                     cell.classList.add('selected-date');
