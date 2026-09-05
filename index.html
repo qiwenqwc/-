@@ -134,111 +134,133 @@
             return false;
         }
 
-        function setupPointerEvents(grid) {
-            let isDragging = false;
-            let dragMode = null;
-            let startDate = null;
-            let hasDragged = false;
+function setupPointerEvents(grid) {
+    let isDragging = false;
+    let dragMode = null;
+    let startDate = null;
+    let hasDragged = false;
+    
+    // 紀錄按下的起始座標，用來計算微小位移
+    let startX = 0;
+    let startY = 0;
 
-            function processDate(dateStr, mode) {
-                if (!dateStr) return;
-                const cell = grid.querySelector(`[data-date="${dateStr}"]`);
-                if (!cell || isDateDisabledByOthers(dateStr)) return;
+    function processDate(dateStr, mode) {
+        if (!dateStr) return;
+        const cell = grid.querySelector(`[data-date="${dateStr}"]`);
+        if (!cell || isDateDisabledByOthers(dateStr)) return;
 
-                if (mode === "add") {
-                    selectedDates.add(dateStr);
-                    cell.classList.add("selected-date");
-                    cell.classList.remove("disabled-by-others");
-                } else if (mode === "remove") {
-                    selectedDates.delete(dateStr);
-                    cell.classList.remove("selected-date");
-                }
-            }
+        if (mode === "add") {
+            selectedDates.add(dateStr);
+            cell.classList.add("selected-date");
+            cell.classList.remove("disabled-by-others");
+        } else if (mode === "remove") {
+            selectedDates.delete(dateStr);
+            cell.classList.remove("selected-date");
+        }
+    }
 
-            function getCellFromPoint(x, y) {
-                const element = document.elementFromPoint(x, y);
-                return element ? element.closest("#calendar-grid [data-date]") : null;
-            }
+    function getCellFromPoint(x, y) {
+        const element = document.elementFromPoint(x, y);
+        return element ? element.closest("#calendar-grid [data-date]") : null;
+    }
 
-            // 觸控事件處理
-            grid.addEventListener("touchstart", function(e) {
-                const touch = e.touches[0];
-                const cell = getCellFromPoint(touch.clientX, touch.clientY);
-                if (!cell) return;
+    // 📱 手機觸控事件
+    grid.addEventListener("touchstart", function(e) {
+        const touch = e.touches[0];
+        const cell = getCellFromPoint(touch.clientX, touch.clientY);
+        if (!cell) return;
 
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
+        const dateStr = cell.dataset.date;
+        if (isDateDisabledByOthers(dateStr)) return;
 
-                isDragging = true;
-                hasDragged = false;
-                startDate = dateStr;
-                dragMode = selectedDates.has(dateStr) ? "remove" : "add";
-            }, { passive: true });
+        isDragging = true;
+        hasDragged = false;
+        startDate = dateStr;
+        
+        // 紀錄最初按下的座標
+        startX = touch.clientX;
+        startY = touch.clientY;
 
-            grid.addEventListener("touchmove", function(e) {
-                if (!isDragging) return;
-                const touch = e.touches[0];
-                const cell = getCellFromPoint(touch.clientX, touch.clientY);
-                if (!cell) return;
+        dragMode = selectedDates.has(dateStr) ? "remove" : "add";
+    }, { passive: true });
 
-                hasDragged = true;
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
+    grid.addEventListener("touchmove", function(e) {
+        if (!isDragging) return;
+        const touch = e.touches[0];
 
-                processDate(dateStr, dragMode);
-            }, { passive: true });
+        // 計算目前手指距離一開始按下的位置有多遠
+        const moveX = Math.abs(touch.clientX - startX);
+        const moveY = Math.abs(touch.clientY - startY);
 
-            grid.addEventListener("touchend", function() {
-                if (!isDragging) return;
-                if (!hasDragged && startDate) {
-                    processDate(startDate, dragMode);
-                }
-                isDragging = false;
-                dragMode = null;
-                startDate = null;
-                hasDragged = false;
-            });
-
-            // 滑鼠事件處理
-            grid.addEventListener("mousedown", function(e) {
-                if (e.button !== 0) return;
-                const cell = e.target.closest("[data-date]");
-                if (!cell) return;
-
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
-
-                isDragging = true;
-                hasDragged = false;
-                startDate = dateStr;
-                dragMode = selectedDates.has(dateStr) ? "remove" : "add";
-                e.preventDefault();
-            });
-
-            grid.addEventListener("mouseover", function(e) {
-                if (!isDragging) return;
-                const cell = e.target.closest("[data-date]");
-                if (!cell) return;
-
-                hasDragged = true;
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
-
-                processDate(dateStr, dragMode);
-            });
-
-            document.addEventListener("mouseup", function() {
-                if (!isDragging) return;
-                if (!hasDragged && startDate) {
-                    processDate(startDate, dragMode);
-                }
-                isDragging = false;
-                dragMode = null;
-                startDate = null;
-                hasDragged = false;
-            });
+        // 位移超過 5 像素才認定為「真的在滑動拖曳」
+        if (moveX > 5 || moveY > 5) {
+            hasDragged = true;
         }
 
+        if (!hasDragged) return; // 如果還沒超過門檻，先不發動連續選取
+
+        const cell = getCellFromPoint(touch.clientX, touch.clientY);
+        if (!cell) return;
+
+        const dateStr = cell.dataset.date;
+        if (isDateDisabledByOthers(dateStr)) return;
+
+        processDate(dateStr, dragMode);
+    }, { passive: true });
+
+    grid.addEventListener("touchend", function() {
+        if (!isDragging) return;
+
+        // 如果沒有超過滑動門檻，一律當作「輕點一下」處理！
+        if (!hasDragged && startDate) {
+            processDate(startDate, dragMode);
+        }
+
+        isDragging = false;
+        dragMode = null;
+        startDate = null;
+        hasDragged = false;
+    });
+
+    // 💻 電腦滑鼠事件 (維持原樣)
+    grid.addEventListener("mousedown", function(e) {
+        if (e.button !== 0) return;
+        const cell = e.target.closest("[data-date]");
+        if (!cell) return;
+
+        const dateStr = cell.dataset.date;
+        if (isDateDisabledByOthers(dateStr)) return;
+
+        isDragging = true;
+        hasDragged = false;
+        startDate = dateStr;
+        dragMode = selectedDates.has(dateStr) ? "remove" : "add";
+        e.preventDefault();
+    });
+
+    grid.addEventListener("mouseover", function(e) {
+        if (!isDragging) return;
+        const cell = e.target.closest("[data-date]");
+        if (!cell) return;
+
+        hasDragged = true;
+        const dateStr = cell.dataset.date;
+        if (isDateDisabledByOthers(dateStr)) return;
+
+        processDate(dateStr, dragMode);
+    });
+
+    document.addEventListener("mouseup", function() {
+        if (!isDragging) return;
+        if (!hasDragged && startDate) {
+            processDate(startDate, dragMode);
+        }
+        isDragging = false;
+        dragMode = null;
+        startDate = null;
+        hasDragged = false;
+    });
+}
         async function enterApp() {
             const select = document.getElementById('user-select');
             if (!select.value) {
