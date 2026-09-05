@@ -1,346 +1,1604 @@
 <!DOCTYPE html>
+
 <html lang="zh-TW">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>每月份日期避開系統</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .selected-date { background-color: #ef4444 !important; color: white !important; }
-        .disabled-by-others { background-color: #d1d5db !important; color: #9ca3af !important; text-decoration: line-through; cursor: not-allowed !important; }
-        
-        #calendar-grid {
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-            -webkit-tap-highlight-color: transparent;
-        }
 
-        #calendar-grid div[data-date] {
-            -webkit-user-select: none;
-            user-select: none;
-            touch-action: none;
-        }
-    </style>
+```
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>每月份日期避開系統</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+
+<style>
+
+    /* ==========================================
+       自己選擇的日期
+       ========================================== */
+
+    .selected-date {
+        background-color: #ef4444 !important;
+        color: white !important;
+    }
+
+
+    /* ==========================================
+       其他人選擇的日期
+       ========================================== */
+
+    .disabled-by-others {
+        background-color: #d1d5db !important;
+        color: #9ca3af !important;
+        text-decoration: line-through;
+        cursor: not-allowed !important;
+    }
+
+
+    /* ==========================================
+       月曆基本設定
+       ========================================== */
+
+    #calendar-grid {
+
+        -webkit-user-select: none;
+        user-select: none;
+
+        -webkit-touch-callout: none;
+
+        -webkit-tap-highlight-color: transparent;
+    }
+
+
+    /*
+     * 日期格
+     *
+     * manipulation 可以讓手機正常觸發 click
+     */
+
+    #calendar-grid div[data-date] {
+
+        -webkit-user-select: none;
+        user-select: none;
+
+        touch-action: manipulation;
+
+        -webkit-tap-highlight-color: transparent;
+    }
+
+
+    /*
+     * 防止手機選取文字
+     */
+
+    body {
+
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+
+    /*
+     * select 必須允許正常操作
+     */
+
+    select {
+
+        -webkit-user-select: auto;
+        user-select: auto;
+
+        touch-action: manipulation;
+    }
+
+
+    /*
+     * 按鈕允許正常點擊
+     */
+
+    button {
+
+        touch-action: manipulation;
+    }
+
+</style>
+```
+
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans antialiased select-none">
 
-    <div class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
-        <header class="bg-blue-600 text-white p-4 text-center">
-            <h1 id="month-title" class="text-xl font-bold">載入中...</h1>
-            <p class="text-xs mt-1 text-blue-100">點擊或滑過選擇你「不可以」的日子</p>
-        </header>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased">
 
-        <section id="login-section" class="p-6 flex-1 flex flex-col justify-center">
-            <h2 class="text-lg font-semibold mb-4 text-center">請選擇你的暱稱</h2>
-            <select
-                id="user-select"
-                style="
-                    width: 100%;
-                    height: 52px;
-                    padding: 0 12px;
-                    font-size: 18px;
-                    color: #1f2937;
-                    background-color: #ffffff;
-                    border: 1px solid #d1d5db;
-                    border-radius: 8px;
-                    box-sizing: border-box;
-                "
-            >
-                <option value="">-- 請選擇身分 --</option>
-                <option value="Qi">Qi</option>
-                <option value="Han">Han</option>
-                <option value="Zhang">Zhang</option>
-                <option value="Hsieh">Hsieh</option>
-            </select>
-            <button id="enter-btn" onclick="enterApp()" class="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow hover:bg-blue-700 transition flex items-center justify-center">
-                進入填寫
+```
+<!-- ==========================================
+     主容器
+     ========================================== -->
+
+<div class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+
+
+    <!-- ==========================================
+         標題
+         ========================================== -->
+
+    <header class="bg-blue-600 text-white p-4 text-center">
+
+        <h1 id="month-title"
+            class="text-xl font-bold">
+
+            載入中...
+
+        </h1>
+
+
+        <p class="text-xs mt-1 text-blue-100">
+
+            點擊或滑過選擇你「不可以」的日子
+
+        </p>
+
+    </header>
+
+
+
+    <!-- ==========================================
+         登入 / 選擇身分
+         ========================================== -->
+
+    <section id="login-section"
+             class="p-6 flex-1 flex flex-col justify-center">
+
+
+        <h2 class="text-lg font-semibold mb-4 text-center">
+
+            請選擇你的暱稱
+
+        </h2>
+
+
+        <!--
+            使用最單純的原生 select
+            避免部分手機只顯示第一個字母
+        -->
+
+        <select id="user-select"
+                class="w-full p-3 border border-gray-300 rounded-lg mb-4 text-lg bg-white">
+
+            <option value="">
+                -- 請選擇身分 --
+            </option>
+
+            <option value="Qi">
+                Qi
+            </option>
+
+            <option value="Han">
+                Han
+            </option>
+
+            <option value="Zhang">
+                Zhang
+            </option>
+
+            <option value="Hsieh">
+                Hsieh
+            </option>
+
+        </select>
+
+
+        <button id="enter-btn"
+                onclick="enterApp()"
+                class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow hover:bg-blue-700 transition">
+
+            進入填寫
+
+        </button>
+
+    </section>
+
+
+
+    <!-- ==========================================
+         月曆區域
+         ========================================== -->
+
+    <section id="app-section"
+             class="p-4 flex-1 flex flex-col hidden">
+
+
+        <!-- 使用者資訊 -->
+
+        <div class="flex justify-between items-center mb-3">
+
+            <span class="text-sm font-medium text-gray-600">
+
+                目前身分：
+
+                <strong id="current-user-tag"
+                        class="text-blue-600">
+
+                </strong>
+
+            </span>
+
+
+            <button onclick="logout()"
+                    class="text-xs text-gray-500 underline">
+
+                切換身分
+
             </button>
-        </section>
 
-        <section id="app-section" class="p-4 flex-1 flex flex-col hidden">
-            <div class="flex justify-between items-center mb-3">
-                <span class="text-sm font-medium text-gray-600">目前身分：<strong id="current-user-tag" class="text-blue-600"></strong></span>
-                <button onclick="logout()" class="text-xs text-gray-500 underline">切換身分</button>
+        </div>
+
+
+
+        <!-- ======================================
+             圖例
+             ====================================== -->
+
+        <div class="flex justify-around text-xs mb-3 bg-gray-100 p-2 rounded">
+
+
+            <div class="flex items-center">
+
+                <span class="w-3 h-3 bg-red-500 inline-block rounded-sm mr-1"></span>
+
+                你選的不行
+
             </div>
 
-            <div class="flex justify-around text-xs mb-3 bg-gray-100 p-2 rounded">
-                <div class="flex items-center"><span class="w-3 h-3 bg-red-500 inline-block rounded-sm mr-1"></span>你選的不行</div>
-                <div class="flex items-center"><span class="w-3 h-3 bg-gray-300 inline-block rounded-sm mr-1"></span>其他人不行</div>
-                <div class="flex items-center"><span class="w-3 h-3 bg-white border inline-block rounded-sm mr-1"></span>雙方皆可</div>
+
+            <div class="flex items-center">
+
+                <span class="w-3 h-3 bg-gray-300 inline-block rounded-sm mr-1"></span>
+
+                其他人不行
+
             </div>
 
-            <div class="border rounded-lg overflow-hidden flex-1 shadow-sm">
-                <div class="grid grid-cols-7 bg-gray-100 text-center text-xs font-bold text-gray-600 py-2">
-                    <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
-                </div>
-                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-gray-200 text-center text-sm">
-                </div>
+
+            <div class="flex items-center">
+
+                <span class="w-3 h-3 bg-white border inline-block rounded-sm mr-1"></span>
+
+                雙方皆可
+
             </div>
 
-            <button id="submit-btn" onclick="submitData()" class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700 transition">
-                確認送出（覆蓋紀錄）
-            </button>
-        </section>
-    </div>
+        </div>
 
-    <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyXsRlU9BUAIfOwg3MCR4Io4LzzuWsMiv9UZd99tKLsUrjbCCmljPACwMYfZmMuf0HTUw/exec";
 
-        let currentUser = "";
-        let selectedDates = new Set();
-        let allUsersData = {};
-        let currentYear, currentMonth;
-        let isDataFetched = false;
 
-        function initCalendar() {
-            const now = new Date();
-            currentYear = now.getFullYear();
-            currentMonth = now.getMonth();
+        <!-- ======================================
+             月曆
+             ====================================== -->
 
-            document.getElementById('month-title').innerText = `${currentYear} 年 ${currentMonth + 1} 月份行程`;
+        <div class="border rounded-lg overflow-hidden flex-1 shadow-sm">
 
-            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-            const grid = document.getElementById('calendar-grid');
-            grid.innerHTML = "";
+            <!-- 星期 -->
 
-            for (let i = 0; i < firstDay; i++) {
-                const emptyCell = document.createElement('div');
-                emptyCell.className = 'bg-white p-3';
-                grid.appendChild(emptyCell);
-            }
+            <div class="grid grid-cols-7 bg-gray-100 text-center text-xs font-bold text-gray-600 py-2">
 
-            for (let day = 1; day <= totalDays; day++) {
-                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const cell = document.createElement('div');
-                cell.className = 'bg-white py-4 flex items-center justify-center cursor-pointer select-none transition';
-                cell.innerText = day;
-                cell.dataset.date = dateStr;
-                grid.appendChild(cell);
-            }
+                <span>日</span>
+                <span>一</span>
+                <span>二</span>
+                <span>三</span>
+                <span>四</span>
+                <span>五</span>
+                <span>六</span>
 
-            setupPointerEvents(grid);
+            </div>
+
+
+            <!-- 日期 -->
+
+            <div id="calendar-grid"
+                 class="grid grid-cols-7 gap-px bg-gray-200 text-center text-sm">
+
+            </div>
+
+        </div>
+
+
+
+        <!-- ======================================
+             送出
+             ====================================== -->
+
+        <button id="submit-btn"
+                onclick="submitData()"
+                class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700 transition">
+
+            確認送出（覆蓋紀錄）
+
+        </button>
+
+    </section>
+
+</div>
+
+
+
+<script>
+
+
+    // ==================================================
+    // Google Apps Script Web App URL
+    // ==================================================
+
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyXsRlU9BUAIfOwg3MCR4Io4LzzuWsMiv9UZd99tKLsUrjbCCmljPACwMYfZmMuf0HTUw/exec";
+
+
+
+    // ==================================================
+    // 全域變數
+    // ==================================================
+
+    let currentUser = "";
+
+    let selectedDates = new Set();
+
+    let allUsersData = {};
+
+    let currentYear;
+
+    let currentMonth;
+
+    let isDataFetched = false;
+
+
+
+    // ==================================================
+    // 建立月曆
+    // ==================================================
+
+    function initCalendar() {
+
+
+        const now = new Date();
+
+
+        currentYear =
+            now.getFullYear();
+
+
+        currentMonth =
+            now.getMonth();
+
+
+
+        // 標題
+
+        document.getElementById(
+            "month-title"
+        ).innerText =
+            `${currentYear} 年 ${currentMonth + 1} 月份行程`;
+
+
+
+        // 本月第一天星期幾
+
+        const firstDay =
+            new Date(
+                currentYear,
+                currentMonth,
+                1
+            ).getDay();
+
+
+
+        // 本月總天數
+
+        const totalDays =
+            new Date(
+                currentYear,
+                currentMonth + 1,
+                0
+            ).getDate();
+
+
+
+        const grid =
+            document.getElementById(
+                "calendar-grid"
+            );
+
+
+        grid.innerHTML = "";
+
+
+
+        // ==================================================
+        // 補前面的空白
+        // ==================================================
+
+        for (
+            let i = 0;
+            i < firstDay;
+            i++
+        ) {
+
+            const emptyCell =
+                document.createElement("div");
+
+
+            emptyCell.className =
+                "bg-white p-3";
+
+
+            grid.appendChild(
+                emptyCell
+            );
         }
 
-        function isDateDisabledByOthers(dateStr) {
-            for (const user in allUsersData) {
-                if (user === currentUser) continue;
-                if (Array.isArray(allUsersData[user]) && allUsersData[user].includes(dateStr)) {
-                    return true;
+
+
+        // ==================================================
+        // 建立日期
+        // ==================================================
+
+        for (
+            let day = 1;
+            day <= totalDays;
+            day++
+        ) {
+
+
+            const dateStr =
+                `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+
+
+            const cell =
+                document.createElement("div");
+
+
+            cell.className =
+                "bg-white py-4 flex items-center justify-center cursor-pointer select-none transition";
+
+
+
+            cell.innerText =
+                day;
+
+
+
+            cell.dataset.date =
+                dateStr;
+
+
+
+            // ==================================================
+            // ★ 每個日期直接綁定 click
+            //
+            // 這是手機短按的主要處理方式
+            // ==================================================
+
+            cell.addEventListener(
+                "click",
+                function(e) {
+
+
+                    // 如果剛剛是拖曳
+                    // 不要再觸發點擊
+
+                    if (
+                        window.calendarWasDragging
+                    ) {
+
+                        window.calendarWasDragging =
+                            false;
+
+                        return;
+                    }
+
+
+
+                    // 其他人已選
+                    // 完全不能操作
+
+                    if (
+                        isDateDisabledByOthers(
+                            dateStr
+                        )
+                    ) {
+
+                        return;
+                    }
+
+
+
+                    // ==================================================
+                    // 點一下：
+                    //
+                    // 沒選 → 選取
+                    // 已選 → 取消
+                    // ==================================================
+
+                    if (
+                        selectedDates.has(
+                            dateStr
+                        )
+                    ) {
+
+                        selectedDates.delete(
+                            dateStr
+                        );
+
+                    } else {
+
+                        selectedDates.add(
+                            dateStr
+                        );
+                    }
+
+
+
+                    updateCalendarUI();
+
                 }
-            }
-            return false;
+            );
+
+
+
+            grid.appendChild(
+                cell
+            );
         }
 
-        function setupPointerEvents(grid) {
-            let isDragging = false;
-            let dragMode = null;
-            let startDate = null;
-            let hasDragged = false;
 
-            function processDate(dateStr, mode) {
-                if (!dateStr) return;
-                const cell = grid.querySelector(`[data-date="${dateStr}"]`);
-                if (!cell || isDateDisabledByOthers(dateStr)) return;
 
-                if (mode === "add") {
-                    selectedDates.add(dateStr);
-                    cell.classList.add("selected-date");
-                    cell.classList.remove("disabled-by-others");
-                } else if (mode === "remove") {
-                    selectedDates.delete(dateStr);
-                    cell.classList.remove("selected-date");
-                }
+        // 建立拖曳事件
+
+        setupDragEvents(grid);
+
+    }
+
+
+
+    // ==================================================
+    // 判斷某一天是不是其他人已經選擇
+    // ==================================================
+
+    function isDateDisabledByOthers(
+        dateStr
+    ) {
+
+
+        for (
+            const user in allUsersData
+        ) {
+
+
+            // 排除目前使用者
+
+            if (
+                user === currentUser
+            ) {
+
+                continue;
             }
 
-            function getCellFromPoint(x, y) {
-                const element = document.elementFromPoint(x, y);
-                return element ? element.closest("#calendar-grid [data-date]") : null;
+
+
+            const dates =
+                allUsersData[user];
+
+
+
+            if (
+                Array.isArray(dates) &&
+                dates.includes(dateStr)
+            ) {
+
+                return true;
             }
-
-            // 觸控事件處理
-            grid.addEventListener("touchstart", function(e) {
-                const touch = e.touches[0];
-                const cell = getCellFromPoint(touch.clientX, touch.clientY);
-                if (!cell) return;
-
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
-
-                isDragging = true;
-                hasDragged = false;
-                startDate = dateStr;
-                dragMode = selectedDates.has(dateStr) ? "remove" : "add";
-            }, { passive: true });
-
-            grid.addEventListener("touchmove", function(e) {
-                if (!isDragging) return;
-                const touch = e.touches[0];
-                const cell = getCellFromPoint(touch.clientX, touch.clientY);
-                if (!cell) return;
-
-                hasDragged = true;
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
-
-                processDate(dateStr, dragMode);
-            }, { passive: true });
-
-            grid.addEventListener("touchend", function() {
-                if (!isDragging) return;
-                if (!hasDragged && startDate) {
-                    processDate(startDate, dragMode);
-                }
-                isDragging = false;
-                dragMode = null;
-                startDate = null;
-                hasDragged = false;
-            });
-
-            // 滑鼠事件處理
-            grid.addEventListener("mousedown", function(e) {
-                if (e.button !== 0) return;
-                const cell = e.target.closest("[data-date]");
-                if (!cell) return;
-
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
-
-                isDragging = true;
-                hasDragged = false;
-                startDate = dateStr;
-                dragMode = selectedDates.has(dateStr) ? "remove" : "add";
-                e.preventDefault();
-            });
-
-            grid.addEventListener("mouseover", function(e) {
-                if (!isDragging) return;
-                const cell = e.target.closest("[data-date]");
-                if (!cell) return;
-
-                hasDragged = true;
-                const dateStr = cell.dataset.date;
-                if (isDateDisabledByOthers(dateStr)) return;
-
-                processDate(dateStr, dragMode);
-            });
-
-            document.addEventListener("mouseup", function() {
-                if (!isDragging) return;
-                if (!hasDragged && startDate) {
-                    processDate(startDate, dragMode);
-                }
-                isDragging = false;
-                dragMode = null;
-                startDate = null;
-                hasDragged = false;
-            });
         }
 
-        async function enterApp() {
-            const select = document.getElementById('user-select');
-            if (!select.value) {
-                alert('請先選擇你的暱稱！');
+
+        return false;
+    }
+
+
+
+    // ==================================================
+    // 拖曳選取系統
+    // ==================================================
+
+    function setupDragEvents(
+        grid
+    ) {
+
+
+        let isDragging =
+            false;
+
+
+        let dragMode =
+            null;
+
+
+        let hasMoved =
+            false;
+
+
+        let startX =
+            0;
+
+
+        let startY =
+            0;
+
+
+
+        // ==================================================
+        // 找出目前手指 / 滑鼠所在的日期
+        // ==================================================
+
+        function getCellFromPoint(
+            x,
+            y
+        ) {
+
+
+            const element =
+                document.elementFromPoint(
+                    x,
+                    y
+                );
+
+
+            if (!element) {
+                return null;
+            }
+
+
+            return element.closest(
+                "#calendar-grid div[data-date]"
+            );
+        }
+
+
+
+        // ==================================================
+        // 處理日期
+        // ==================================================
+
+        function processDate(
+            dateStr
+        ) {
+
+
+            if (!dateStr) {
                 return;
             }
-            currentUser = select.value;
-            document.getElementById('current-user-tag').innerText = currentUser;
 
-            const enterBtn = document.getElementById('enter-btn');
 
-            if (!isDataFetched) {
-                enterBtn.innerText = '載入雲端資料中...';
-                enterBtn.disabled = true;
-                await fetchLatestData();
-                enterBtn.innerText = '進入填寫';
-                enterBtn.disabled = false;
-                isDataFetched = true;
-            } else {
-                loadUserDataToLocal();
-                updateCalendarUI();
+
+            // 其他人日期
+            // 直接跳過
+
+            if (
+                isDateDisabledByOthers(
+                    dateStr
+                )
+            ) {
+
+                return;
             }
 
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('app-section').classList.remove('hidden');
-        }
 
-        function logout() {
-            currentUser = "";
-            selectedDates.clear();
-            document.getElementById('app-section').classList.add('hidden');
-            document.getElementById('login-section').classList.remove('hidden');
-        }
 
-        async function fetchLatestData() {
-            try {
-                const response = await fetch(WEB_APP_URL, { method: 'GET', redirect: 'follow' });
-                const result = await response.json();
-                allUsersData = result || {};
-                loadUserDataToLocal();
-                updateCalendarUI();
-            } catch (error) {
-                console.error('讀取資料失敗', error);
-                alert('無法取得雲端資料，請檢查網路連線或 API 網址。');
+            const cell =
+                grid.querySelector(
+                    `[data-date="${dateStr}"]`
+                );
+
+
+            if (!cell) {
+                return;
             }
-        }
 
-        function loadUserDataToLocal() {
-            selectedDates.clear();
-            if (allUsersData[currentUser] && Array.isArray(allUsersData[currentUser])) {
-                allUsersData[currentUser].forEach(d => selectedDates.add(d));
+
+
+            if (
+                dragMode === "add"
+            ) {
+
+                selectedDates.add(
+                    dateStr
+                );
+
             }
+
+
+            else if (
+                dragMode === "remove"
+            ) {
+
+                selectedDates.delete(
+                    dateStr
+                );
+            }
+
+
+
+            updateCalendarUI();
         }
 
-        function updateCalendarUI() {
-            const cells = document.querySelectorAll('#calendar-grid div[data-date]');
-            cells.forEach(cell => {
-                const dateStr = cell.dataset.date;
-                cell.className = 'bg-white py-4 flex items-center justify-center cursor-pointer select-none transition';
 
-                if (selectedDates.has(dateStr)) {
-                    cell.classList.add('selected-date');
+
+        // ==================================================
+        // 手機 Touch Start
+        // ==================================================
+
+        grid.addEventListener(
+            "touchstart",
+            function(e) {
+
+
+                const touch =
+                    e.touches[0];
+
+
+                const cell =
+                    e.target.closest(
+                        "#calendar-grid div[data-date]"
+                    );
+
+
+                if (!cell) {
                     return;
                 }
 
-                if (isDateDisabledByOthers(dateStr)) {
-                    cell.classList.add('disabled-by-others');
-                    cell.classList.remove('cursor-pointer');
+
+
+                const dateStr =
+                    cell.dataset.date;
+
+
+
+                // 其他人日期
+                // 不可以開始拖曳
+
+                if (
+                    isDateDisabledByOthers(
+                        dateStr
+                    )
+                ) {
+
+                    return;
                 }
-            });
+
+
+
+                isDragging =
+                    true;
+
+
+                hasMoved =
+                    false;
+
+
+
+                startX =
+                    touch.clientX;
+
+
+                startY =
+                    touch.clientY;
+
+
+
+                // 已選 → 取消
+
+                // 未選 → 選取
+
+                dragMode =
+                    selectedDates.has(
+                        dateStr
+                    )
+                        ? "remove"
+                        : "add";
+
+            },
+            {
+                passive: true
+            }
+        );
+
+
+
+        // ==================================================
+        // 手機 Touch Move
+        // ==================================================
+
+        grid.addEventListener(
+            "touchmove",
+            function(e) {
+
+
+                if (!isDragging) {
+                    return;
+                }
+
+
+
+                const touch =
+                    e.touches[0];
+
+
+
+                const dx =
+                    Math.abs(
+                        touch.clientX -
+                        startX
+                    );
+
+
+                const dy =
+                    Math.abs(
+                        touch.clientY -
+                        startY
+                    );
+
+
+
+                // 超過 8px
+                // 才算拖曳
+
+                if (
+                    dx > 8 ||
+                    dy > 8
+                ) {
+
+                    hasMoved =
+                        true;
+
+                    window.calendarWasDragging =
+                        true;
+                }
+
+
+
+                if (!hasMoved) {
+                    return;
+                }
+
+
+
+                const cell =
+                    getCellFromPoint(
+                        touch.clientX,
+                        touch.clientY
+                    );
+
+
+                if (!cell) {
+                    return;
+                }
+
+
+
+                const dateStr =
+                    cell.dataset.date;
+
+
+
+                // 其他人日期
+                // 跳過
+
+                if (
+                    isDateDisabledByOthers(
+                        dateStr
+                    )
+                ) {
+
+                    return;
+                }
+
+
+
+                processDate(
+                    dateStr
+                );
+
+            },
+            {
+                passive: true
+            }
+        );
+
+
+
+        // ==================================================
+        // 手機 Touch End
+        // ==================================================
+
+        grid.addEventListener(
+            "touchend",
+            function() {
+
+
+                if (!isDragging) {
+                    return;
+                }
+
+
+
+                /*
+                 *
+                 * ★ 注意
+                 *
+                 * 短按不在 touchend 選取。
+                 *
+                 * 短按由日期格自己的 click 處理。
+                 *
+                 */
+
+
+
+                isDragging =
+                    false;
+
+
+                dragMode =
+                    null;
+
+
+                startX =
+                    0;
+
+
+                startY =
+                    0;
+
+
+                hasMoved =
+                    false;
+
+            }
+        );
+
+
+
+        // ==================================================
+        // 電腦 Mouse Down
+        // ==================================================
+
+        grid.addEventListener(
+            "mousedown",
+            function(e) {
+
+
+                if (
+                    e.button !== 0
+                ) {
+
+                    return;
+                }
+
+
+
+                const cell =
+                    e.target.closest(
+                        "#calendar-grid div[data-date]"
+                    );
+
+
+                if (!cell) {
+                    return;
+                }
+
+
+
+                const dateStr =
+                    cell.dataset.date;
+
+
+
+                // 其他人日期不能操作
+
+                if (
+                    isDateDisabledByOthers(
+                        dateStr
+                    )
+                ) {
+
+                    return;
+                }
+
+
+
+                isDragging =
+                    true;
+
+
+                hasMoved =
+                    false;
+
+
+                window.calendarWasDragging =
+                    false;
+
+
+
+                dragMode =
+                    selectedDates.has(
+                        dateStr
+                    )
+                        ? "remove"
+                        : "add";
+
+
+
+                e.preventDefault();
+
+            }
+        );
+
+
+
+        // ==================================================
+        // 電腦 Mouse Move
+        // ==================================================
+
+        grid.addEventListener(
+            "mousemove",
+            function(e) {
+
+
+                if (!isDragging) {
+                    return;
+                }
+
+
+
+                const cell =
+                    e.target.closest(
+                        "#calendar-grid div[data-date]"
+                    );
+
+
+                if (!cell) {
+                    return;
+                }
+
+
+
+                hasMoved =
+                    true;
+
+
+                window.calendarWasDragging =
+                    true;
+
+
+
+                const dateStr =
+                    cell.dataset.date;
+
+
+
+                // 其他人日期跳過
+
+                if (
+                    isDateDisabledByOthers(
+                        dateStr
+                    )
+                ) {
+
+                    return;
+                }
+
+
+
+                processDate(
+                    dateStr
+                );
+
+            }
+        );
+
+
+
+        // ==================================================
+        // 電腦 Mouse Up
+        // ==================================================
+
+        document.addEventListener(
+            "mouseup",
+            function() {
+
+
+                if (!isDragging) {
+                    return;
+                }
+
+
+
+                isDragging =
+                    false;
+
+
+                dragMode =
+                    null;
+
+
+                hasMoved =
+                    false;
+
+            }
+        );
+
+    }
+
+
+
+    // ==================================================
+    // 進入 App
+    // ==================================================
+
+    async function enterApp() {
+
+
+        const select =
+            document.getElementById(
+                "user-select"
+            );
+
+
+        if (!select.value) {
+
+            alert(
+                "請先選擇你的暱稱！"
+            );
+
+            return;
         }
 
-        async function submitData() {
-            const submitBtn = document.getElementById('submit-btn');
-            const datesArray = Array.from(selectedDates);
-            
-            allUsersData[currentUser] = datesArray;
+
+
+        currentUser =
+            select.value;
+
+
+
+        document.getElementById(
+            "current-user-tag"
+        ).innerText =
+            currentUser;
+
+
+
+        const enterBtn =
+            document.getElementById(
+                "enter-btn"
+            );
+
+
+
+        // ==================================================
+        // 第一次進入
+        // ==================================================
+
+        if (!isDataFetched) {
+
+
+            enterBtn.innerText =
+                "載入雲端資料中...";
+
+
+            enterBtn.disabled =
+                true;
+
+
+
+            await fetchLatestData();
+
+
+
+            enterBtn.innerText =
+                "進入填寫";
+
+
+            enterBtn.disabled =
+                false;
+
+
+            isDataFetched =
+                true;
+
+        }
+
+
+        // ==================================================
+        // 已經取得資料
+        // ==================================================
+
+        else {
+
+            loadUserDataToLocal();
+
+            updateCalendarUI();
+        }
+
+
+
+        // 顯示月曆
+
+        document.getElementById(
+            "login-section"
+        ).classList.add(
+            "hidden"
+        );
+
+
+        document.getElementById(
+            "app-section"
+        ).classList.remove(
+            "hidden"
+        );
+
+    }
+
+
+
+    // ==================================================
+    // 切換身分
+    // ==================================================
+
+    function logout() {
+
+
+        currentUser =
+            "";
+
+
+        selectedDates.clear();
+
+
+
+        document.getElementById(
+            "app-section"
+        ).classList.add(
+            "hidden"
+        );
+
+
+        document.getElementById(
+            "login-section"
+        ).classList.remove(
+            "hidden"
+        );
+
+
+        // 清除選單
+
+        document.getElementById(
+            "user-select"
+        ).value = "";
+
+    }
+
+
+
+    // ==================================================
+    // 從 Google Apps Script 取得資料
+    // ==================================================
+
+    async function fetchLatestData() {
+
+
+        try {
+
+
+            const response =
+                await fetch(
+                    WEB_APP_URL,
+                    {
+                        method: "GET",
+                        redirect: "follow"
+                    }
+                );
+
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `HTTP ${response.status}`
+                );
+            }
+
+
+
+            const result =
+                await response.json();
+
+
+
+            allUsersData =
+                result || {};
+
+
+
+            loadUserDataToLocal();
+
             updateCalendarUI();
 
-            const payload = { user: currentUser, dates: datesArray };
 
-            try {
-                submitBtn.innerText = '儲存中...';
-                submitBtn.disabled = true;
+        } catch (error) {
 
-                await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(payload),
-                    redirect: 'follow'
-                });
 
-                alert('儲存成功！');
-            } catch (error) {
-                console.error('儲存失敗', error);
-                alert('儲存失敗，請再試一次。');
-            } finally {
-                submitBtn.innerText = '確認送出（覆蓋紀錄）';
-                submitBtn.disabled = false;
-            }
+            console.error(
+                "讀取資料失敗",
+                error
+            );
+
+
+            alert(
+                "無法取得雲端資料，請檢查網路連線或 API 網址。"
+            );
+
         }
 
-        initCalendar();
-    </script>
+    }
+
+
+
+    // ==================================================
+    // 載入目前使用者資料
+    // ==================================================
+
+    function loadUserDataToLocal() {
+
+
+        selectedDates.clear();
+
+
+
+        if (
+            allUsersData[currentUser] &&
+            Array.isArray(
+                allUsersData[currentUser]
+            )
+        ) {
+
+
+            allUsersData[currentUser].forEach(
+                function(date) {
+
+                    selectedDates.add(
+                        date
+                    );
+
+                }
+            );
+        }
+
+    }
+
+
+
+    // ==================================================
+    // 更新月曆 UI
+    // ==================================================
+
+    function updateCalendarUI() {
+
+
+        const cells =
+            document.querySelectorAll(
+                "#calendar-grid div[data-date]"
+            );
+
+
+
+        cells.forEach(
+            function(cell) {
+
+
+                const dateStr =
+                    cell.dataset.date;
+
+
+
+                // ==================================================
+                // 重設基本樣式
+                // ==================================================
+
+                cell.className =
+                    "bg-white py-4 flex items-center justify-center cursor-pointer select-none transition";
+
+
+
+                // ==================================================
+                // 自己選的日期
+                // ==================================================
+
+                if (
+                    selectedDates.has(
+                        dateStr
+                    )
+                ) {
+
+
+                    cell.classList.add(
+                        "selected-date"
+                    );
+
+
+                    return;
+                }
+
+
+
+                // ==================================================
+                // 其他人選的日期
+                // ==================================================
+
+                if (
+                    isDateDisabledByOthers(
+                        dateStr
+                    )
+                ) {
+
+
+                    cell.classList.add(
+                        "disabled-by-others"
+                    );
+
+
+                    cell.classList.remove(
+                        "cursor-pointer"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+
+    // ==================================================
+    // 送出資料
+    // ==================================================
+
+    async function submitData() {
+
+
+        const submitBtn =
+            document.getElementById(
+                "submit-btn"
+            );
+
+
+        const datesArray =
+            Array.from(
+                selectedDates
+            );
+
+
+
+        // ==================================================
+        // 更新本地資料
+        // ==================================================
+
+        allUsersData[currentUser] =
+            datesArray;
+
+
+        updateCalendarUI();
+
+
+
+        // ==================================================
+        // POST Payload
+        // ==================================================
+
+        const payload = {
+
+            user:
+                currentUser,
+
+            dates:
+                datesArray
+
+        };
+
+
+
+        try {
+
+
+            submitBtn.innerText =
+                "儲存中...";
+
+
+            submitBtn.disabled =
+                true;
+
+
+
+            const response =
+                await fetch(
+                    WEB_APP_URL,
+                    {
+                        method: "POST",
+
+                        body:
+                            JSON.stringify(
+                                payload
+                            ),
+
+                        redirect:
+                            "follow"
+                    }
+                );
+
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `HTTP ${response.status}`
+                );
+            }
+
+
+
+            alert(
+                "儲存成功！"
+            );
+
+
+        } catch (error) {
+
+
+            console.error(
+                "儲存失敗",
+                error
+            );
+
+
+            alert(
+                "儲存失敗，請再試一次。"
+            );
+
+
+        } finally {
+
+
+            submitBtn.innerText =
+                "確認送出（覆蓋紀錄）";
+
+
+            submitBtn.disabled =
+                false;
+
+        }
+
+    }
+
+
+
+    // ==================================================
+    // 啟動月曆
+    // ==================================================
+
+    initCalendar();
+
+</script>
+```
+
 </body>
+
 </html>
