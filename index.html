@@ -9,7 +9,7 @@
         .selected-date { background-color: #ef4444 !important; color: white !important; }
         .disabled-by-others { background-color: #d1d5db !important; color: #9ca3af !important; text-decoration: line-through; cursor: not-allowed; }
         
-        /* 核心防護：徹底停用手機瀏覽器針對日期的任何預設手勢干擾 */
+        /* 核心防護：全面關閉預設滾動、長按選取與點擊高亮 */
         #calendar-grid { 
             touch-action: none; 
             -webkit-user-select: none;
@@ -31,10 +31,10 @@
             <h2 class="text-lg font-semibold mb-4 text-center">請選擇你的暱稱</h2>
             <select id="user-select" class="w-full p-3 border rounded-lg mb-4 text-lg bg-white shadow-sm">
                 <option value="">-- 請選擇身分 --</option>
-                <option value="成員1">Qi</option>
-                <option value="成員2">Han</option>
-                <option value="成員3">Zhang</option>
-                <option value="成員4">Hsieh</option>
+                <option value="Qi">Qi</option>
+                <option value="Han">Han</option>
+                <option value="Zhang">Zhang</option>
+                <option value="Hsieh">Hsieh</option>
             </select>
             <button id="enter-btn" onclick="enterApp()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow hover:bg-blue-700 transition flex items-center justify-center">
                 進入填寫
@@ -77,9 +77,8 @@
         let currentYear, currentMonth;
         let isDataFetched = false;
 
-        let isDragging = false;
+        let isPointerDown = false;
         let dragSelectMode = true;
-        let hasMoved = false;
 
         function initCalendar() {
             const now = new Date();
@@ -106,67 +105,52 @@
                 cell.className = 'bg-white py-4 flex items-center justify-center cursor-pointer select-none transition';
                 cell.innerText = day;
                 cell.dataset.date = dateStr;
-                
-                // 點擊事件：處理輕點一下
-                cell.addEventListener('click', (e) => {
-                    if (!hasMoved) {
-                        const isSelected = selectedDates.has(dateStr);
-                        applySelection(dateStr, cell, !isSelected);
-                    }
-                });
-
                 grid.appendChild(cell);
             }
 
-            setupDragEvents(grid);
+            setupPointerEvents(grid);
         }
 
-        function setupDragEvents(grid) {
-            const handleStart = (cell) => {
-                if (!cell || !cell.dataset.date) return;
-                isDragging = true;
-                hasMoved = false;
+        function setupPointerEvents(grid) {
+            // 使用 Pointer Events 統一手機觸控與電腦滑鼠
+            grid.addEventListener('pointerdown', (e) => {
+                const cell = e.target.closest('[data-date]');
+                if (!cell) return;
+                
+                isPointerDown = true;
                 const dateStr = cell.dataset.date;
+                
+                // 判斷按下的第一個格子是要「選取」還是「取消」
                 dragSelectMode = !selectedDates.has(dateStr);
-            };
+                applySelection(dateStr, cell, dragSelectMode);
 
-            const handleMove = (cell) => {
-                if (!isDragging || !cell || !cell.dataset.date) return;
-                hasMoved = true;
-                applySelection(cell.dataset.date, cell, dragSelectMode);
-            };
-
-            const handleEnd = () => {
-                isDragging = false;
-            };
-
-            // 電腦滑鼠事件
-            grid.addEventListener('mousedown', (e) => {
-                const cell = e.target.closest('[data-date]');
-                handleStart(cell);
+                // 綁定 capture 避免滑控超出邊界失聯
+                grid.setPointerCapture(e.pointerId);
             });
 
-            grid.addEventListener('mouseover', (e) => {
-                const cell = e.target.closest('[data-date]');
-                handleMove(cell);
+            grid.addEventListener('pointermove', (e) => {
+                if (!isPointerDown) return;
+                
+                // 抓取手指或滑鼠當前位置下的元素
+                const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+                const cell = targetElement?.closest('[data-date]');
+                
+                if (cell && cell.dataset.date) {
+                    applySelection(cell.dataset.date, cell, dragSelectMode);
+                }
             });
 
-            window.addEventListener('mouseup', handleEnd);
+            const handlePointerUp = (e) => {
+                if (isPointerDown) {
+                    isPointerDown = false;
+                    try {
+                        grid.releasePointerCapture(e.pointerId);
+                    } catch (err) {}
+                }
+            };
 
-            // 手機觸控事件
-            grid.addEventListener('touchstart', (e) => {
-                const touch = e.touches[0];
-                const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-date]');
-                handleStart(cell);
-            }, { passive: true });
-
-            grid.addEventListener('touchmove', (e) => {
-                const touch = e.touches[0];
-                const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-date]');
-                handleMove(cell);
-            }, { passive: true });
-
-            window.addEventListener('touchend', handleEnd);
+            grid.addEventListener('pointerup', handlePointerUp);
+            grid.addEventListener('pointercancel', handlePointerUp);
         }
 
         function applySelection(dateStr, cellElement, shouldSelect) {
