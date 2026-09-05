@@ -8,7 +8,7 @@
     <style>
         .selected-date { background-color: #ef4444 !important; color: white !important; }
         .disabled-by-others { background-color: #d1d5db !important; color: #9ca3af !important; text-decoration: line-through; cursor: not-allowed; }
-        /* 防止滑動選取時觸發手機網頁下拉重新整理或上下滾動 */
+        /* 防止手機滑動選取時觸發頁面上下滾動 */
         #calendar-grid { touch-action: none; }
     </style>
 </head>
@@ -28,7 +28,6 @@
                 <option value="成員2">成員 2</option>
                 <option value="成員3">成員 3</option>
                 <option value="成員4">成員 4</option>
-                <option value="成員5">成員 5</option>
             </select>
             <button id="enter-btn" onclick="enterApp()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow hover:bg-blue-700 transition flex items-center justify-center">
                 進入填寫
@@ -71,9 +70,8 @@
         let currentYear, currentMonth;
         let isDataFetched = false;
 
-        // 拖曳選取狀態變數
         let isMouseDown = false;
-        let dragSelectMode = true; // true: 劃過變成選取, false: 劃過變成取消
+        let dragSelectMode = true;
 
         function initCalendar() {
             const now = new Date();
@@ -106,31 +104,24 @@
             setupDragEvents(grid);
         }
 
-        // 綁定滑鼠與手機手指拖曳選取事件
         function setupDragEvents(grid) {
-            // 滑鼠按下 / 手指接觸
             const handleStart = (cell) => {
                 if (!cell || !cell.dataset.date) return;
                 const dateStr = cell.dataset.date;
                 isMouseDown = true;
-                
-                // 根據第一顆按下的格子決定「這次滑動是要選取還是取消」
                 dragSelectMode = !selectedDates.has(dateStr);
                 applySelection(dateStr, cell, dragSelectMode);
             };
 
-            // 滑鼠移動 / 手指滑動
             const handleMove = (cell) => {
                 if (!isMouseDown || !cell || !cell.dataset.date) return;
                 applySelection(cell.dataset.date, cell, dragSelectMode);
             };
 
-            // 放開滑鼠 / 手指離開
             const handleEnd = () => {
                 isMouseDown = false;
             };
 
-            // 電腦滑鼠事件
             grid.addEventListener('mousedown', (e) => {
                 const cell = e.target.closest('[data-date]');
                 handleStart(cell);
@@ -143,7 +134,6 @@
 
             window.addEventListener('mouseup', handleEnd);
 
-            // 手機觸控事件 (Touch Events)
             grid.addEventListener('touchstart', (e) => {
                 const touch = e.touches[0];
                 const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-date]');
@@ -203,16 +193,22 @@
             document.getElementById('login-section').classList.remove('hidden');
         }
 
+        // 核心修復 1：增加 redirect: 'follow' 相容手機 Safari/Chrome 重定向
         async function fetchLatestData() {
             try {
-                const response = await fetch(WEB_APP_URL);
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
                 const result = await response.json();
                 allUsersData = result || {};
+                
+                // 核心修復 2：載入資料後，立刻計算並渲染「目前使用者」與「其他所有成員」的狀態
                 loadUserDataToLocal();
                 updateCalendarUI();
             } catch (error) {
                 console.error('讀取資料失敗', error);
-                alert('無法取得雲端資料，請檢查 API 網址。');
+                alert('無法取得雲端資料，請檢查網路連線或 API 網址。');
             }
         }
 
@@ -262,7 +258,8 @@
 
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    redirect: 'follow'
                 });
 
                 alert('儲存成功！');
