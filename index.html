@@ -1,1 +1,1144 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
 
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>月排程劃假系統</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #222;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                "Noto Sans TC",
+                "Microsoft JhengHei",
+                sans-serif;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 10px 0 20px;
+            font-size: 28px;
+        }
+
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        select {
+            width: 100%;
+            height: 46px;
+            padding: 0 12px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background: #fff;
+            font-size: 16px;
+        }
+
+        #monthTitle {
+            margin: 18px 0 8px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        #status {
+            min-height: 20px;
+            margin-bottom: 14px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .week-header,
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .week-header {
+            margin-bottom: 6px;
+        }
+
+        .week-day {
+            padding: 6px 0;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            min-height: 44px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border: 1px solid #ddd;
+            border-radius: 10px;
+
+            background: #fff;
+            color: #222;
+
+            font-size: 16px;
+            font-weight: 500;
+
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        .day-cell.empty {
+            border: none;
+            background: transparent;
+        }
+
+        /* 自己選取 */
+        .day-cell.selected {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        /* 其他人選取 */
+        .day-cell.other-selected {
+            background: #e5e7eb;
+            border-color: #bbb;
+            color: #666;
+        }
+
+        /* 自己與其他人同一天 */
+        .day-cell.selected.other-selected {
+            background: #ef4444;
+            color: #fff;
+            border: 2px dashed #333;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 18px;
+            font-size: 13px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 17px;
+            height: 17px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .legend-self {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .legend-other {
+            background: #e5e7eb;
+        }
+
+        .legend-empty {
+            background: #fff;
+        }
+
+        #submitBtn {
+            width: 100%;
+            height: 48px;
+            margin-top: 20px;
+
+            border: none;
+            border-radius: 10px;
+
+            background: #222;
+            color: #fff;
+
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        #submitBtn:disabled {
+            background: #999;
+        }
+
+        .hint {
+            margin-top: 12px;
+            text-align: center;
+            color: #777;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 14px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .week-header,
+            .calendar-grid {
+                gap: 4px;
+            }
+
+            .day-cell {
+                min-height: 40px;
+                border-radius: 8px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>月排程劃假系統</h1>
+
+    <div class="card">
+
+        <label for="userSelect">請選擇使用者</label>
+
+        <select id="userSelect"
+                onchange="handleUserChange(this.value)">
+
+            <option value="">請選擇</option>
+            <option value="C">C</option>
+            <option value="H">H</option>
+            <option value="X">X</option>
+            <option value="Z">Z</option>
+
+        </select>
+
+        <div id="monthTitle"></div>
+
+        <div id="status">Firebase 初始化中...</div>
+
+        <div class="week-header">
+            <div class="week-day">日</div>
+            <div class="week-day">一</div>
+            <div class="week-day">二</div>
+            <div class="week-day">三</div>
+            <div class="week-day">四</div>
+            <div class="week-day">五</div>
+            <div class="week-day">六</div>
+        </div>
+
+        <div id="calendarGrid"
+             class="calendar-grid">
+        </div>
+
+        <div class="legend">
+
+            <div class="legend-item">
+                <span class="legend-color legend-self"></span>
+                我已劃假
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-color legend-other"></span>
+                其他人已劃假
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-color legend-empty"></span>
+                尚未劃假
+            </div>
+
+        </div>
+
+        <button id="submitBtn"
+                onclick="submitData()"
+                disabled>
+            送出資料
+        </button>
+
+        <div class="hint">
+            點擊日期可選取／取消，也可以按住滑動選取多天。
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- Firebase -->
+<script type="module">
+
+    import {
+        initializeApp
+    } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+
+    import {
+        getFirestore,
+        doc,
+        getDoc,
+        runTransaction
+    } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+    import {
+        getAuth,
+        signInAnonymously,
+        onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+
+
+    // =========================================================
+    // 請換成你原本 Firebase 專案的設定
+    // =========================================================
+
+    const firebaseConfig = {
+
+        apiKey: "AIzaSyCFapSoTvipTCMUZ5M3Ghb9rXOj95Yj_o4",
+
+        authDomain: "date-avoid-system.firebaseapp.com",
+
+        projectId: "date-avoid-system",
+
+        storageBucket: "date-avoid-system.firebasestorage.app",
+
+        messagingSenderId: "751550520587",
+
+        appId: "1:751550520587:web:685299a50aa46aa6a2d60e"
+
+    };
+
+
+    const app = initializeApp(firebaseConfig);
+
+    const db = getFirestore(app);
+
+    const auth = getAuth(app);
+
+
+    // 提供給下面一般 script 使用
+    window.firebaseDB = db;
+    window.firebaseDoc = doc;
+    window.firebaseGetDoc = getDoc;
+    window.firebaseRunTransaction = runTransaction;
+    window.firebaseAuth = auth;
+
+    window.firebaseReady = true;
+    window.firebaseAuthReady = false;
+
+
+    signInAnonymously(auth)
+        .catch(error => {
+
+            console.error(error);
+
+            document.getElementById("status").textContent =
+                "Firebase 登入失敗";
+
+        });
+
+
+    onAuthStateChanged(auth, async user => {
+
+        if (!user) {
+
+            window.firebaseAuthReady = false;
+
+            document.getElementById("status").textContent =
+                "Firebase 尚未登入";
+
+            return;
+        }
+
+
+        window.firebaseAuthReady = true;
+
+        document.getElementById("status").textContent =
+            "Firebase 已連線";
+
+
+        document.getElementById("submitBtn").disabled =
+            !window.currentUser;
+
+
+        await fetchLatestData();
+
+    });
+
+</script>
+
+
+<!-- 主要程式 -->
+<script>
+
+    let currentUser = "";
+
+    let selectedDates = new Set();
+
+    let allUsersData = {};
+
+    let isDragging = false;
+
+    let dragSelectMode = true;
+
+    let draggedDates = new Set();
+
+    /*
+     * 防止：
+     * pointerdown → pointerup → click
+     * 導致拖曳起始日期又被 click 重複切換。
+     */
+    let suppressClick = false;
+
+
+    // =========================================================
+    // 目前月份
+    // =========================================================
+
+    function getCurrentMonthInfo() {
+
+        const today = new Date();
+
+        const year = today.getFullYear();
+
+        const month = today.getMonth() + 1;
+
+        const monthString =
+            `${year}-${String(month).padStart(2, "0")}`;
+
+        return {
+            year,
+            month,
+            monthString
+        };
+    }
+
+
+    function updateMonthTitle() {
+
+        const {
+            year,
+            month
+        } = getCurrentMonthInfo();
+
+        document.getElementById("monthTitle").textContent =
+            `${year} 年 ${month} 月`;
+    }
+
+
+    // =========================================================
+    // 判斷其他人是否劃假
+    // =========================================================
+
+    function isOtherSelected(dateStr) {
+
+        for (const username in allUsersData) {
+
+            if (username === currentUser) {
+                continue;
+            }
+
+            const dates = allUsersData[username] || [];
+
+            if (dates.includes(dateStr)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    // =========================================================
+    // 建立日曆
+    // =========================================================
+
+    function renderCalendar() {
+
+        const grid =
+            document.getElementById("calendarGrid");
+
+        grid.innerHTML = "";
+
+
+        const {
+            year,
+            month,
+            monthString
+        } = getCurrentMonthInfo();
+
+
+        const firstDay =
+            new Date(year, month - 1, 1).getDay();
+
+        const lastDate =
+            new Date(year, month, 0).getDate();
+
+
+        // 前面的空白
+        for (let i = 0; i < firstDay; i++) {
+
+            const cell =
+                document.createElement("div");
+
+            cell.className = "day-cell empty";
+
+            grid.appendChild(cell);
+        }
+
+
+        // 日期
+        for (let day = 1; day <= lastDate; day++) {
+
+            const dateStr =
+                `${monthString}-${String(day).padStart(2, "0")}`;
+
+
+            const cell =
+                document.createElement("div");
+
+            cell.className = "day-cell";
+
+            cell.dataset.date = dateStr;
+
+            cell.textContent = day;
+
+
+            updateCellClass(
+                cell,
+                dateStr
+            );
+
+
+            cell.addEventListener(
+                "pointerdown",
+                handlePointerDown
+            );
+
+
+            cell.addEventListener(
+                "click",
+                handleClick
+            );
+
+
+            grid.appendChild(cell);
+        }
+    }
+
+
+    // =========================================================
+    // 更新單一日期外觀
+    // =========================================================
+
+    function updateCellClass(cell, dateStr) {
+
+        const mine =
+            selectedDates.has(dateStr);
+
+        const other =
+            isOtherSelected(dateStr);
+
+
+        cell.classList.toggle(
+            "selected",
+            mine
+        );
+
+        cell.classList.toggle(
+            "other-selected",
+            other
+        );
+    }
+
+
+    function updateDateCell(dateStr) {
+
+        const cell =
+            document.querySelector(
+                `.day-cell[data-date="${dateStr}"]`
+            );
+
+        if (cell) {
+            updateCellClass(
+                cell,
+                dateStr
+            );
+        }
+    }
+
+
+    // =========================================================
+    // 點擊
+    // =========================================================
+
+    function handleClick(event) {
+
+        if (suppressClick) {
+
+            suppressClick = false;
+
+            return;
+        }
+
+
+        const dateStr =
+            event.currentTarget.dataset.date;
+
+        toggleDate(dateStr);
+    }
+
+
+    function toggleDate(dateStr) {
+
+        if (!currentUser) {
+
+            alert("請先選擇使用者！");
+
+            return;
+        }
+
+
+        if (selectedDates.has(dateStr)) {
+
+            selectedDates.delete(dateStr);
+
+        } else {
+
+            selectedDates.add(dateStr);
+
+        }
+
+
+        updateDateCell(dateStr);
+    }
+
+
+    // =========================================================
+    // 拖曳
+    // =========================================================
+
+    function applyDrag(dateStr) {
+
+        if (!dateStr) {
+            return;
+        }
+
+
+        // 同一次拖曳不要重複處理
+        if (draggedDates.has(dateStr)) {
+            return;
+        }
+
+
+        draggedDates.add(dateStr);
+
+
+        if (dragSelectMode) {
+
+            selectedDates.add(dateStr);
+
+        } else {
+
+            selectedDates.delete(dateStr);
+
+        }
+
+
+        updateDateCell(dateStr);
+    }
+
+
+    function handlePointerDown(event) {
+
+        if (!currentUser) {
+
+            alert("請先選擇使用者！");
+
+            return;
+        }
+
+
+        event.preventDefault();
+
+        suppressClick = true;
+
+        isDragging = true;
+
+        draggedDates.clear();
+
+
+        const dateStr =
+            event.currentTarget.dataset.date;
+
+
+        // 未選 → 這次拖曳全部選取
+        // 已選 → 這次拖曳全部取消
+        dragSelectMode =
+            !selectedDates.has(dateStr);
+
+
+        applyDrag(dateStr);
+
+
+        document.addEventListener(
+            "pointermove",
+            handlePointerMove,
+            { passive: false }
+        );
+    }
+
+
+    function handlePointerMove(event) {
+
+        if (!isDragging) {
+            return;
+        }
+
+
+        event.preventDefault();
+
+
+        const target =
+            document.elementFromPoint(
+                event.clientX,
+                event.clientY
+            );
+
+
+        if (!target) {
+            return;
+        }
+
+
+        const cell =
+            target.closest(".day-cell");
+
+
+        if (
+            !cell ||
+            cell.classList.contains("empty") ||
+            !cell.dataset.date
+        ) {
+            return;
+        }
+
+
+        applyDrag(
+            cell.dataset.date
+        );
+    }
+
+
+    function stopDragging() {
+
+        if (!isDragging) {
+            return;
+        }
+
+
+        isDragging = false;
+
+        draggedDates.clear();
+
+
+        document.removeEventListener(
+            "pointermove",
+            handlePointerMove
+        );
+    }
+
+
+    document.addEventListener(
+        "pointerup",
+        stopDragging
+    );
+
+
+    document.addEventListener(
+        "pointercancel",
+        stopDragging
+    );
+
+
+    // =========================================================
+    // 使用者切換
+    // =========================================================
+
+    function handleUserChange(username) {
+
+        currentUser = username;
+
+        window.currentUser = username;
+
+
+        if (!username) {
+
+            selectedDates.clear();
+
+            renderCalendar();
+
+            document.getElementById("submitBtn").disabled = true;
+
+            return;
+        }
+
+
+        const {
+            monthString
+        } = getCurrentMonthInfo();
+
+
+        const dates =
+            allUsersData[username] || [];
+
+
+        selectedDates =
+            new Set(
+                dates.filter(date =>
+                    date.startsWith(monthString)
+                )
+            );
+
+
+        renderCalendar();
+
+
+        document.getElementById("submitBtn").disabled =
+            !window.firebaseAuthReady;
+    }
+
+
+    // =========================================================
+    // 從 Firestore 讀取
+    // =========================================================
+
+    async function fetchLatestData() {
+
+        if (
+            !window.firebaseReady ||
+            !window.firebaseAuthReady
+        ) {
+            return;
+        }
+
+
+        try {
+
+            const {
+                monthString
+            } = getCurrentMonthInfo();
+
+
+            const calendarRef =
+                window.firebaseDoc(
+                    window.firebaseDB,
+                    "calendar",
+                    "calendarData"
+                );
+
+
+            const snapshot =
+                await window.firebaseGetDoc(
+                    calendarRef
+                );
+
+
+            if (
+                !snapshot.exists() ||
+                snapshot.data().month !== monthString
+            ) {
+
+                allUsersData = {};
+
+                selectedDates.clear();
+
+                renderCalendar();
+
+                return;
+            }
+
+
+            const data =
+                snapshot.data();
+
+
+            allUsersData = {};
+
+            const users = [
+                "C",
+                "H",
+                "X",
+                "Z"
+            ];
+
+
+            users.forEach(username => {
+
+                allUsersData[username] =
+                    Array.isArray(data[username])
+                        ? data[username]
+                        : [];
+
+            });
+
+
+            if (currentUser) {
+
+                selectedDates =
+                    new Set(
+                        allUsersData[currentUser]
+                            .filter(date =>
+                                date.startsWith(monthString)
+                            )
+                    );
+            }
+
+
+            renderCalendar();
+
+
+        } catch (error) {
+
+            console.error(
+                "讀取資料失敗：",
+                error
+            );
+
+            document.getElementById("status").textContent =
+                "資料讀取失敗";
+
+        }
+    }
+
+
+    // =========================================================
+    // 送出資料
+    // =========================================================
+
+    async function submitData() {
+
+        if (!currentUser) {
+
+            alert("請先選擇使用者！");
+
+            return;
+        }
+
+
+        if (
+            !window.firebaseReady ||
+            !window.firebaseAuthReady
+        ) {
+
+            alert("Firebase 尚未連線完成。");
+
+            return;
+        }
+
+
+        const button =
+            document.getElementById("submitBtn");
+
+
+        if (button.disabled) {
+            return;
+        }
+
+
+        button.disabled = true;
+
+        button.textContent =
+            "資料送出中...";
+
+
+        try {
+
+            const {
+                monthString
+            } = getCurrentMonthInfo();
+
+
+            const dates =
+                Array.from(selectedDates).sort();
+
+
+            const calendarRef =
+                window.firebaseDoc(
+                    window.firebaseDB,
+                    "calendar",
+                    "calendarData"
+                );
+
+
+            await window.firebaseRunTransaction(
+                window.firebaseDB,
+                async transaction => {
+
+                    const snapshot =
+                        await transaction.get(
+                            calendarRef
+                        );
+
+
+                    // 沒有資料
+                    if (!snapshot.exists()) {
+
+                        transaction.set(
+                            calendarRef,
+                            {
+                                month: monthString,
+                                [currentUser]: dates
+                            }
+                        );
+
+                        return;
+                    }
+
+
+                    const data =
+                        snapshot.data();
+
+
+                    // 新月份
+                    if (data.month !== monthString) {
+
+                        transaction.set(
+                            calendarRef,
+                            {
+                                month: monthString,
+                                [currentUser]: dates
+                            }
+                        );
+
+                        return;
+                    }
+
+
+                    // 同月份，只更新自己的資料
+                    transaction.set(
+                        calendarRef,
+                        {
+                            month: monthString,
+                            [currentUser]: dates
+                        },
+                        {
+                            merge: true
+                        }
+                    );
+                }
+            );
+
+
+            allUsersData[currentUser] =
+                dates;
+
+
+            renderCalendar();
+
+
+            document.getElementById("status").textContent =
+                "資料已成功送出";
+
+
+            alert("資料已成功送出！");
+
+
+        } catch (error) {
+
+            console.error(
+                "送出失敗：",
+                error
+            );
+
+
+            document.getElementById("status").textContent =
+                "資料送出失敗";
+
+
+            alert(
+                "資料送出失敗：\n" +
+                error.message
+            );
+
+
+        } finally {
+
+            button.disabled =
+                !currentUser ||
+                !window.firebaseAuthReady;
+
+            button.textContent =
+                "送出資料";
+        }
+    }
+
+
+    // =========================================================
+    // 初始化
+    //
+    // 使用者每次重新開啟網頁時，
+    // 這裡會取得「今天」的月份。
+    // 不使用 setInterval。
+    // =========================================================
+
+    updateMonthTitle();
+
+    renderCalendar();
+
+
+    // 提供給 HTML onclick / onchange
+    window.handleUserChange =
+        handleUserChange;
+
+    window.submitData =
+        submitData;
+
+    window.currentUser =
+        currentUser;
+
+</script>
+
+</body>
+</html>
